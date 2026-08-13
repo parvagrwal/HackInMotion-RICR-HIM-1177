@@ -10,25 +10,34 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const supabase = createServerComponentClient(
-    { cookies: () => cookies() }
-  );
+  const supabase = createServerComponentClient({
+    cookies: () => cookies(),
+  });
 
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Protect routes
-  const publicRoutes = ['/login', '/signup', '/'];
+  const publicRoutes = [
+    '/',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+  ];
+
   const pathname = request.nextUrl.pathname;
 
-  // If accessing protected route without session, redirect to login
   if (!publicRoutes.includes(pathname) && !session) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // If accessing auth routes with session, redirect to dashboard
-  if ((pathname === '/login' || pathname === '/signup') && session) {
+  if (
+    (pathname === '/login' ||
+      pathname === '/signup' ||
+      pathname === '/forgot-password') &&
+    session
+  ) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
@@ -36,7 +45,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
