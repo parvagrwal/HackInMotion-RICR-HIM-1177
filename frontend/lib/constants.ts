@@ -1,0 +1,101 @@
+/**
+ * Shared constants for the expense analyzer application
+ */
+
+export const CATEGORIES = [
+  'Food',
+  'Rent',
+  'Shopping',
+  'Subscriptions',
+  'Travel',
+  'Bills',
+  'Entertainment',
+  'Income',
+  'Other',
+] as const;
+
+export type Category = typeof CATEGORIES[number];
+
+export const CATEGORY_KEYWORDS: Record<Category, string[]> = {
+  Food: [
+    'swiggy',
+    'zomato',
+    'doordash',
+    'ubereats',
+    'grubhub',
+    'pizza',
+    'restaurant',
+    'cafe',
+    'burger',
+    'food',
+  ],
+  Rent: [
+    'rent',
+    'landlord',
+    'mortgage',
+    'housing',
+    'lease',
+    'apartment',
+  ],
+  Shopping: [
+    'amazon',
+    'flipkart',
+    'walmart',
+    'target',
+    'ebay',
+    'shopping',
+    'store',
+    'mall',
+    'retail',
+  ],
+  Subscriptions: [
+    'netflix',
+    'spotify',
+    'prime video',
+    'youtube',
+    'disney',
+    'subscription',
+    'spotify',
+    'hulu',
+  ],
+  Travel: [
+    'uber',
+    'ola',
+    'lyft',
+    'taxi',
+    'indigo',
+    'emirates',
+    'airline',
+    'flight',
+    'hotel',
+    'airbnb',
+  ],
+  Bills: [
+    'electricity',
+    'water bill',
+    'broadband',
+    'internet',
+    'phone',
+    'gas',
+    'utility',
+    'bill',
+  ],
+  Entertainment: [
+    'cinema',
+    'movie',
+    'concert',
+    'game',
+    'entertainment',
+    'sports',
+    'ticket',
+  ],
+  Income: [
+    'salary',
+    'wage',
+    'income',
+    'payment',
+    'credit',
+    'transfer in',
+  ],
+  Other: [],
+};
