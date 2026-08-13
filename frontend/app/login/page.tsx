@@ -1,22 +1,31 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClientComponentClient();
 
-  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (searchParams.get('passwordReset') === 'success') {
+      setMessage('Password updated successfully. Please sign in.');
+    }
+  }, [searchParams]);
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError('');
+    setMessage('');
 
     if (!email || !password) {
       setError('Please enter your email and password.');
@@ -85,7 +94,7 @@ export default function LoginPage() {
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 required
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
               />
@@ -104,24 +113,30 @@ export default function LoginPage() {
                 type="password"
                 placeholder="Enter your password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 required
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
               />
             </div>
 
             <div className="flex justify-end">
-              <button
-                type="button"
+              <Link
+                href="/forgot-password"
                 className="text-sm font-medium text-teal-700 hover:text-teal-800"
               >
                 Forgot password?
-              </button>
+              </Link>
             </div>
 
             {error && (
               <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
+              </div>
+            )}
+
+            {message && (
+              <div className="rounded-xl bg-teal-50 px-4 py-3 text-sm text-teal-700">
+                {message}
               </div>
             )}
 
@@ -135,7 +150,7 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-7 text-center text-sm text-slate-500">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link
               href="/signup"
               className="font-medium text-teal-700 hover:text-teal-800"
