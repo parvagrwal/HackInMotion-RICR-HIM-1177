@@ -34,6 +34,130 @@ export interface FinancialHealthScore {
   breakdown: string;
 }
 
+export interface RecurringPayment {
+  merchant: string;
+  cadence: 'weekly' | 'monthly' | 'yearly';
+  typicalAmount: number;
+  monthlyCost: number;
+  lastChargeDate: string;
+  nextExpectedDate: string;
+  transactionIds: string[];
+}
+
+type TransactionForRecurrence = {
+  id: string;
+  date: string;
+  amount: number;
+  merchant: string | null;
+  description: string;
+};
+
+function normalizeMerchant(transaction: Pick<TransactionForRecurrence, 'merchant' | 'description'>) {
+  return (transaction.merchant || transaction.description)
+    .toLowerCase()
+    .replace(/\d+/g, '')
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getCadence(days: number): RecurringPayment['cadence'] | null {
+  if (days >= 6 && days <= 8) return 'weekly';
+  if (days >= 25 && days <= 35) return 'monthly';
+  if (days >= 330 && days <= 400) return 'yearly';
+  return null;
+}
+
+function addDays(date: string, days: number) {
+  const next = new Date(`${date}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next.toISOString().slice(0, 10);
+}
+
+/** Detect repeated merchant charges and store the current detected subscriptions. */
+export async function getRecurringPayments(): Promise<RecurringPayment[]> {
+  try {
+    const supabase = createServerComponentClient({ cookies });
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) throw new Error('Unauthorized');
+
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 12);
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('id, date, amount, merchant, description')
+      .eq('user_id', session.user.id)
+      .gte('date', startDate.toISOString().slice(0, 10))
+      .gt('amount', 0)
+      .order('date', { ascending: true });
+    if (error) throw error;
+
+    const grouped = new Map<string, TransactionForRecurrence[]>();
+    for (const transaction of (data || []) as TransactionForRecurrence[]) {
+      const normalizedMerchant = normalizeMerchant(transaction);
+      if (!normalizedMerchant) continue;
+      grouped.set(normalizedMerchant, [...(grouped.get(normalizedMerchant) || []), transaction]);
+    }
+
+    const recurring: Array<RecurringPayment & { normalizedMerchant: string }> = [];
+    for (const [normalizedMerchant, charges] of grouped) {
+      if (charges.length < 3) continue;
+      const intervals = charges.slice(1).map((charge, index) =>
+        Math.round((Date.parse(charge.date) - Date.parse(charges[index].date)) / 86_400_000),
+      );
+      const averageInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+      const cadence = getCadence(averageInterval);
+      const amounts = charges.map((charge) => Math.abs(Number(charge.amount)));
+      const typicalAmount = amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length;
+      const amountVariance = Math.max(...amounts.map((amount) => Math.abs(amount - typicalAmount) / typicalAmount));
+      const intervalVariance = Math.max(...intervals.map((interval) => Math.abs(interval - averageInterval)));
+      if (!cadence || amountVariance > 0.15 || intervalVariance > 5) continue;
+
+      const lastCharge = charges[charges.length - 1];
+      const intervalDays = cadence === 'weekly' ? 7 : cadence === 'monthly' ? 30 : 365;
+      recurring.push({
+        merchant: lastCharge.merchant || lastCharge.description,
+        normalizedMerchant,
+        cadence,
+        typicalAmount,
+        monthlyCost: cadence === 'weekly' ? typicalAmount * 4.33 : cadence === 'yearly' ? typicalAmount / 12 : typicalAmount,
+        lastChargeDate: lastCharge.date,
+        nextExpectedDate: addDays(lastCharge.date, intervalDays),
+        transactionIds: charges.map((charge) => charge.id),
+      });
+    }
+
+    const detected = recurring.filter((payment) => payment.transactionIds.length >= 3);
+    if (detected.length > 0) {
+      const { error: saveError } = await supabase.from('recurring_payments').upsert(
+        detected.map(({ normalizedMerchant, ...payment }) => ({
+          user_id: session.user.id,
+          merchant: payment.merchant,
+          normalized_merchant: normalizedMerchant,
+          cadence: payment.cadence,
+          typical_amount: payment.typicalAmount,
+          monthly_cost: payment.monthlyCost,
+          last_charge_date: payment.lastChargeDate,
+          next_expected_date: payment.nextExpectedDate,
+          detection_status: 'detected',
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: 'user_id,normalized_merchant' },
+      );
+      if (saveError) throw saveError;
+
+      await supabase.from('transactions').update({ is_recurring: true }).in(
+        'id', detected.flatMap((payment) => payment.transactionIds),
+      );
+    }
+
+    return detected.sort((a, b) => b.monthlyCost - a.monthlyCost);
+  } catch (error) {
+    console.error('Get recurring payments error:', error);
+    return [];
+  }
+}
+
 /**
  * Get top spending categories for a user
  */
@@ -382,6 +506,14 @@ export async function getRecommendations(): Promise<string[]> {
 
     const currentMonth = new Date().toISOString().slice(0, 7);
     const recommendations: string[] = [];
+
+    const recurringPayments = await getRecurringPayments();
+    if (recurringPayments.length > 0) {
+      const monthlyCost = recurringPayments.reduce((sum, payment) => sum + payment.monthlyCost, 0);
+      recommendations.push(
+        `You have ${recurringPayments.length} recurring payment${recurringPayments.length === 1 ? '' : 's'} costing $${monthlyCost.toFixed(2)} per month. Review subscriptions you no longer use.`,
+      );
+    }
 
     // Get top categories
     const topCategories = await getTopCategories(currentMonth);

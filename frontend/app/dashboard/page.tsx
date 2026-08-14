@@ -9,6 +9,7 @@ import { CategoryBreakdown } from '@/components/category-breakdown';
 import { MonthlytrendChart } from '@/components/monthly-trend-chart';
 import { BudgetProgressBars } from '@/components/budget-progress-bars';
 import { RecommendationsWidget } from '@/components/recommendations-widget';
+import { RecurringPaymentsCard } from '@/components/recurring-payments-card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -16,6 +17,8 @@ import {
   getMonthlyTrends,
   getFinancialHealthScore,
   getRecommendations,
+  getRecurringPayments,
+  type RecurringPayment,
 } from '@/lib/analysis';
 import { getBudgetProgress } from '@/app/dashboard/actions';
 
@@ -25,6 +28,7 @@ interface DashboardData {
   healthScore: any;
   recommendations: string[];
   budgetProgress: any[];
+  recurringPayments: RecurringPayment[];
 }
 
 export default function DashboardPage() {
@@ -49,12 +53,14 @@ export default function DashboardPage() {
           score,
           recs,
           budgets,
+          recurringPayments,
         ] = await Promise.all([
           getTopCategories(),
           getMonthlyTrends(6),
           getFinancialHealthScore(),
           getRecommendations(),
           getBudgetProgress(),
+          getRecurringPayments(),
         ]);
 
         setData({
@@ -63,6 +69,7 @@ export default function DashboardPage() {
           healthScore: score,
           recommendations: recs,
           budgetProgress: budgets,
+          recurringPayments,
         });
       } catch (err) {
         setError(
@@ -150,6 +157,10 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <CategoryBreakdown categories={data.topCategories} />
           <MonthlytrendChart trends={data.trends} />
+        </div>
+
+        <div className="mb-8">
+          <RecurringPaymentsCard payments={data.recurringPayments} />
         </div>
 
         {/* Budget Progress */}
