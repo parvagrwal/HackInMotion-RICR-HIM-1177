@@ -21,6 +21,8 @@ interface Budget {
 export function BudgetManager({ month }: { month: string }) {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [newBudget, setNewBudget] = useState({
@@ -47,6 +49,7 @@ export function BudgetManager({ month }: { month: string }) {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setCreating(true);
 
     try {
       const amount = parseFloat(newBudget.target_amount);
@@ -73,17 +76,23 @@ export function BudgetManager({ month }: { month: string }) {
       setShowForm(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create budget');
+    } finally {
+      setCreating(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this budget?')) return;
+    setError('');
+    setDeletingId(id);
 
     try {
       await deleteBudget(id);
       setBudgets((prev) => prev.filter((b) => b.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete budget');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -96,6 +105,7 @@ export function BudgetManager({ month }: { month: string }) {
             size="sm"
             onClick={() => setShowForm(true)}
             variant="outline"
+            disabled={loading || creating || deletingId !== null}
           >
             Add Budget
           </Button>
@@ -114,6 +124,7 @@ export function BudgetManager({ month }: { month: string }) {
               <label className="text-sm font-medium">Category</label>
               <select
                 value={newBudget.category}
+                disabled={creating}
                 onChange={(e) =>
                   setNewBudget((prev) => ({ ...prev, category: e.target.value }))
                 }
@@ -140,18 +151,20 @@ export function BudgetManager({ month }: { month: string }) {
                   }))
                 }
                 step="0.01"
+                disabled={creating}
               />
             </div>
 
             <div className="flex gap-2">
-              <Button type="submit" size="sm">
-                Create
+              <Button type="submit" size="sm" disabled={creating}>
+                {creating ? 'Creating...' : 'Create'}
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => setShowForm(false)}
+                disabled={creating}
               >
                 Cancel
               </Button>
@@ -180,8 +193,9 @@ export function BudgetManager({ month }: { month: string }) {
                   size="sm"
                   onClick={() => handleDelete(budget.id)}
                   className="text-destructive hover:text-destructive"
+                  disabled={deletingId !== null}
                 >
-                  Delete
+                  {deletingId === budget.id ? 'Deleting...' : 'Delete'}
                 </Button>
               </div>
             ))}

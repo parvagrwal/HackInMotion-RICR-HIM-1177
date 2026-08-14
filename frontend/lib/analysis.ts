@@ -2,6 +2,7 @@
 
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { reportActionError } from '@/lib/action-utils';
 
 export interface CategorySummary {
   category: string;
@@ -147,15 +148,15 @@ export async function getRecurringPayments(): Promise<RecurringPayment[]> {
       );
       if (saveError) throw saveError;
 
-      await supabase.from('transactions').update({ is_recurring: true }).in(
+      const { error: markRecurringError } = await supabase.from('transactions').update({ is_recurring: true }).in(
         'id', detected.flatMap((payment) => payment.transactionIds),
       );
+      if (markRecurringError) throw markRecurringError;
     }
 
     return detected.sort((a, b) => b.monthlyCost - a.monthlyCost);
   } catch (error) {
-    console.error('Get recurring payments error:', error);
-    return [];
+    reportActionError('Get recurring payments', error);
   }
 }
 
@@ -217,8 +218,7 @@ export async function getTopCategories(
       }))
       .sort((a, b) => b.total - a.total);
   } catch (error) {
-    console.error('Get top categories error:', error);
-    return [];
+    reportActionError('Get top categories', error);
   }
 }
 
@@ -274,8 +274,7 @@ export async function getMonthlyTrends(
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
   } catch (error) {
-    console.error('Get monthly trends error:', error);
-    return [];
+    reportActionError('Get monthly trends', error);
   }
 }
 
@@ -372,8 +371,7 @@ export async function getSpikes(
 
     return spikes.sort((a, b) => b.percentageAbove - a.percentageAbove);
   } catch (error) {
-    console.error('Get spikes error:', error);
-    return [];
+    reportActionError('Get spending spikes', error);
   }
 }
 
@@ -497,16 +495,7 @@ export async function getFinancialHealthScore(): Promise<FinancialHealthScore> {
       breakdown: `Savings: ${Math.round(savingsPoints)}pts, Budget: ${Math.round(budgetPoints)}pts, Spike: ${spikePenalty}pts`,
     };
   } catch (error) {
-    console.error('Get health score error:', error);
-    return {
-      score: 0,
-      savingsRate: 0,
-      savingsPoints: 0,
-      budgetAdherence: 0,
-      budgetPoints: 0,
-      spikePenalty: 0,
-      breakdown: 'Error calculating score',
-    };
+    reportActionError('Get financial health score', error);
   }
 }
 
@@ -571,7 +560,6 @@ export async function getRecommendations(): Promise<string[]> {
 
     return recommendations.slice(0, 3);
   } catch (error) {
-    console.error('Get recommendations error:', error);
-    return ['Check back later for personalized insights'];
+    reportActionError('Get recommendations', error);
   }
 }

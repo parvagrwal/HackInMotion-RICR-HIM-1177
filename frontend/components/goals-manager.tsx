@@ -22,6 +22,9 @@ interface Goal {
 export function GoalsManager() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [newGoal, setNewGoal] = useState({
@@ -49,6 +52,7 @@ export function GoalsManager() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setCreating(true);
 
     try {
       const amount = parseFloat(newGoal.target_amount);
@@ -74,27 +78,37 @@ export function GoalsManager() {
       setShowForm(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create goal');
+    } finally {
+      setCreating(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this goal?')) return;
+    setError('');
+    setDeletingId(id);
 
     try {
       await deleteGoal(id);
       setGoals((prev) => prev.filter((g) => g.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete goal');
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleUpdateProgress = async (id: string, currentAmount: number) => {
+    setError('');
+    setUpdatingId(id);
     try {
       await updateGoal(id, currentAmount);
       const data = await getGoals();
       setGoals(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update goal');
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -107,6 +121,7 @@ export function GoalsManager() {
             size="sm"
             onClick={() => setShowForm(true)}
             variant="outline"
+            disabled={loading || creating || deletingId !== null || updatingId !== null}
           >
             Add Goal
           </Button>
@@ -127,6 +142,7 @@ export function GoalsManager() {
                 type="text"
                 placeholder="e.g., Vacation Fund"
                 value={newGoal.name}
+                disabled={creating}
                 onChange={(e) =>
                   setNewGoal((prev) => ({ ...prev, name: e.target.value }))
                 }
@@ -146,6 +162,7 @@ export function GoalsManager() {
                   }))
                 }
                 step="0.01"
+                disabled={creating}
               />
             </div>
 
@@ -154,6 +171,7 @@ export function GoalsManager() {
               <Input
                 type="date"
                 value={newGoal.deadline}
+                disabled={creating}
                 onChange={(e) =>
                   setNewGoal((prev) => ({ ...prev, deadline: e.target.value }))
                 }
@@ -161,14 +179,15 @@ export function GoalsManager() {
             </div>
 
             <div className="flex gap-2">
-              <Button type="submit" size="sm">
-                Create
+              <Button type="submit" size="sm" disabled={creating}>
+                {creating ? 'Creating...' : 'Create'}
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => setShowForm(false)}
+                disabled={creating}
               >
                 Cancel
               </Button>
@@ -200,8 +219,9 @@ export function GoalsManager() {
                       size="sm"
                       onClick={() => handleDelete(goal.id)}
                       className="text-destructive hover:text-destructive"
+                      disabled={deletingId !== null || updatingId !== null}
                     >
-                      Delete
+                      {deletingId === goal.id ? 'Deleting...' : 'Delete'}
                     </Button>
                   </div>
 
@@ -226,6 +246,7 @@ export function GoalsManager() {
                       step="0.01"
                       onKeyDown={async (e) => {
                         if (e.key === 'Enter') {
+                          e.preventDefault();
                           const input = e.currentTarget;
                           const amount = parseFloat(input.value);
                           if (!isNaN(amount) && amount > 0) {
@@ -234,9 +255,12 @@ export function GoalsManager() {
                               goal.current_amount + amount
                             );
                             input.value = '';
+                          } else {
+                            setError('Enter a positive amount to update progress.');
                           }
                         }
                       }}
+                      disabled={deletingId !== null || updatingId !== null}
                       className="text-sm"
                     />
                   </div>
