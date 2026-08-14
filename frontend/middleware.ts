@@ -22,6 +22,7 @@ export async function middleware(request: NextRequest) {
     '/',
     '/login',
     '/signup',
+    '/auth/callback',
     '/forgot-password',
     '/reset-password',
   ];
