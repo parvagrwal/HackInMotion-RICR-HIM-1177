@@ -1,12 +1,10 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { useRouter } from 'next/navigation';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { Navigation } from '@/components/navigation';
 import { HealthScoreGauge } from '@/components/health-score-gauge';
 import { CategoryBreakdown } from '@/components/category-breakdown';
-import { MonthlytrendChart } from '@/components/monthly-trend-chart';
+import { MonthlyTrendChart } from '@/components/monthly-trend-chart';
 import { BudgetProgressBars } from '@/components/budget-progress-bars';
 import { RecommendationsWidget } from '@/components/recommendations-widget';
 import { RecurringPaymentsCard } from '@/components/recurring-payments-card';
@@ -19,100 +17,38 @@ import {
   getFinancialHealthScore,
   getRecommendations,
   getRecurringPayments,
-  type RecurringPayment,
 } from '@/lib/analysis';
 import { getBudgetProgress, getMonthlyIncome } from '@/app/dashboard/actions';
 
-interface DashboardData {
-  topCategories: any[];
-  trends: any[];
-  healthScore: any;
-  recommendations: string[];
-  budgetProgress: any[];
-  recurringPayments: RecurringPayment[];
-  monthlyIncome: number;
-}
+export default async function DashboardPage() {
+  const supabase = createServerComponentClient({ cookies });
+  const { data: { session } } = await supabase.auth.getSession();
 
-export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const supabase = createClientComponentClient();
-  const router = useRouter();
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          router.push('/login');
-          return;
-        }
-
-        const [
-          categories,
-          trends,
-          score,
-          recs,
-          budgets,
-          recurringPayments,
-          monthlyIncome,
-        ] = await Promise.all([
-          getTopCategories(),
-          getMonthlyTrends(6),
-          getFinancialHealthScore(),
-          getRecommendations(),
-          getBudgetProgress(),
-          getRecurringPayments(),
-          getMonthlyIncome(),
-        ]);
-
-        setData({
-          topCategories: categories,
-          trends,
-          healthScore: score,
-          recommendations: recs,
-          budgetProgress: budgets,
-          recurringPayments,
-          monthlyIncome,
-        });
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to load dashboard'
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [supabase.auth, router]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">Loading your financial dashboard...</p>
-          <div className="inline-block animate-spin">⏳</div>
-        </div>
-      </div>
-    );
+  if (!session) {
+    redirect('/login');
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <main className="max-w-7xl mx-auto px-4 py-8">
-          <div className="p-4 bg-destructive/10 text-destructive rounded-md">
-            {error}
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const [
+    topCategories,
+    trends,
+    healthScore,
+    recommendations,
+    budgetProgress,
+    recurringPayments,
+    monthlyIncome,
+  ] = await Promise.all([
+    getTopCategories(),
+    getMonthlyTrends(6),
+    getFinancialHealthScore(),
+    getRecommendations(),
+    getBudgetProgress(),
+    getRecurringPayments(),
+    getMonthlyIncome(),
+  ]);
 
-  if (!data) {
+  const hasData = topCategories && topCategories.length > 0;
+
+  if (!hasData) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -147,34 +83,34 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-1">
             <HealthScoreGauge
-              score={data.healthScore.score}
-              savingsRate={data.healthScore.savingsRate}
-              budgetAdherence={data.healthScore.budgetAdherence}
-              breakdown={data.healthScore.breakdown}
+              score={healthScore?.score || 0}
+              savingsRate={healthScore?.savingsRate || 0}
+              budgetAdherence={healthScore?.budgetAdherence || 0}
+              breakdown={healthScore?.breakdown || ''}
             />
           </div>
           <div className="lg:col-span-2">
-            <RecommendationsWidget recommendations={data.recommendations} />
+            <RecommendationsWidget recommendations={recommendations || []} />
           </div>
         </div>
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <CategoryBreakdown categories={data.topCategories} />
-          <MonthlytrendChart trends={data.trends} />
+          <CategoryBreakdown categories={topCategories || []} />
+          <MonthlyTrendChart trends={trends || []} />
         </div>
 
         <div className="mb-8">
-          <RecurringPaymentsCard payments={data.recurringPayments} />
+          <RecurringPaymentsCard payments={recurringPayments || []} />
         </div>
 
         <div className="mb-8">
-          <MonthlyIncomeCard initialIncome={data.monthlyIncome} />
+          <MonthlyIncomeCard initialIncome={monthlyIncome || 0} />
         </div>
 
         {/* Budget Progress */}
         <div className="mb-8">
-          <BudgetProgressBars budgets={data.budgetProgress} />
+          <BudgetProgressBars budgets={budgetProgress || []} />
         </div>
 
         {/* Call to Actions */}
