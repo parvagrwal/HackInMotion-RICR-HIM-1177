@@ -10,6 +10,7 @@ export async function addTransaction(formData: {
   description: string;
   merchant?: string;
   amount: number;
+  type: 'income' | 'expense' | 'transfer';
 }) {
   try {
     const supabase = createServerComponentClient({ cookies });
@@ -34,6 +35,7 @@ export async function addTransaction(formData: {
         description: formData.description,
         merchant: formData.merchant,
         amount: formData.amount,
+        type: formData.type,
         category,
         source: 'manual',
       });
@@ -163,6 +165,7 @@ export async function importTransactionsCSV(
     description: string;
     merchant?: string;
     amount: number;
+    type: 'income' | 'expense' | 'transfer';
   }>
 ) {
   try {
@@ -198,6 +201,7 @@ export async function importTransactionsCSV(
           description: tx.description,
           merchant: tx.merchant || null,
           amount: tx.amount,
+          type: tx.type,
           category,
           source: 'csv',
           created_at: new Date().toISOString(),

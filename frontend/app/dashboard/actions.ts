@@ -2,7 +2,39 @@
 
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 import { getTopCategories } from '@/lib/analysis';
+
+export async function getMonthlyIncome() {
+  const supabase = createServerComponentClient({ cookies });
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user?.id) throw new Error('Unauthorized');
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('monthly_income')
+    .eq('id', session.user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return Number(data?.monthly_income || 0);
+}
+
+export async function updateMonthlyIncome(monthlyIncome: number) {
+  if (!Number.isFinite(monthlyIncome) || monthlyIncome < 0) {
+    throw new Error('Monthly income must be zero or a positive number');
+  }
+
+  const supabase = createServerComponentClient({ cookies });
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user?.id) throw new Error('Unauthorized');
+
+  const { error } = await supabase
+    .from('profiles')
+    .upsert({ id: session.user.id, monthly_income: monthlyIncome }, { onConflict: 'id' });
+  if (error) throw error;
+
+  revalidatePath('/dashboard');
+}
 
 export async function getBudgetProgress() {
   try {

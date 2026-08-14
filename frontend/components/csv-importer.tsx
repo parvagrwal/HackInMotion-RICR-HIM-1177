@@ -69,9 +69,11 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
           const dateCol = findColumn(['date', 'txn date', 'transaction date', 'posted date']);
           const descCol = findColumn(['description', 'narration', 'note', 'memo']);
           const merchantCol = findColumn(['merchant', 'vendor', 'store', 'payee']);
-          const amountCol = findColumn(['amount', 'debit', 'credit', 'value']);
+          const amountCol = findColumn(['amount', 'value']);
+          const debitCol = findColumn(['debit', 'withdrawal']);
+          const creditCol = findColumn(['credit', 'deposit']);
 
-          if (!dateCol || !descCol || !amountCol) {
+          if (!dateCol || !descCol || (!amountCol && !debitCol && !creditCol)) {
             throw new Error(
               'CSV must have Date, Description, and Amount columns. Found columns: ' +
               headers.join(', ')
@@ -86,8 +88,17 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
                 const date = normalizeDate(row[dateCol]?.toString().trim() || '');
                 const description = row[descCol]?.toString().trim() || '';
                 const merchant = merchantCol ? row[merchantCol]?.toString().trim() : undefined;
-                const amountStr = row[amountCol]?.toString().trim() || '';
-                const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
+                const parseAmount = (value: string | undefined) =>
+                  parseFloat((value || '').replace(/[^0-9.-]/g, ''));
+                const debit = debitCol ? parseAmount(row[debitCol]?.toString().trim()) : NaN;
+                const credit = creditCol ? parseAmount(row[creditCol]?.toString().trim()) : NaN;
+                const signedAmount = amountCol
+                  ? parseAmount(row[amountCol]?.toString().trim())
+                  : !isNaN(credit) && credit !== 0
+                    ? credit
+                    : !isNaN(debit) && debit !== 0
+                      ? -debit
+                      : NaN;
 
                 if (!date) {
                   skippedRows.push({ rowNum: idx + 2, reason: 'Invalid date' });
@@ -97,7 +108,7 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
                   skippedRows.push({ rowNum: idx + 2, reason: 'Missing description' });
                   return null;
                 }
-                if (isNaN(amount)) {
+                if (isNaN(signedAmount) || signedAmount === 0) {
                   skippedRows.push({ rowNum: idx + 2, reason: 'Invalid amount' });
                   return null;
                 }
@@ -106,7 +117,8 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
                   date,
                   description,
                   merchant: merchant || undefined,
-                  amount: Math.abs(amount),
+                  amount: Math.abs(signedAmount),
+                  type: signedAmount > 0 ? 'income' : 'expense',
                 };
               } catch (err) {
                 skippedRows.push({

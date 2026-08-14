@@ -10,6 +10,7 @@ import { MonthlytrendChart } from '@/components/monthly-trend-chart';
 import { BudgetProgressBars } from '@/components/budget-progress-bars';
 import { RecommendationsWidget } from '@/components/recommendations-widget';
 import { RecurringPaymentsCard } from '@/components/recurring-payments-card';
+import { MonthlyIncomeCard } from '@/components/monthly-income-card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -20,7 +21,7 @@ import {
   getRecurringPayments,
   type RecurringPayment,
 } from '@/lib/analysis';
-import { getBudgetProgress } from '@/app/dashboard/actions';
+import { getBudgetProgress, getMonthlyIncome } from '@/app/dashboard/actions';
 
 interface DashboardData {
   topCategories: any[];
@@ -29,6 +30,7 @@ interface DashboardData {
   recommendations: string[];
   budgetProgress: any[];
   recurringPayments: RecurringPayment[];
+  monthlyIncome: number;
 }
 
 export default function DashboardPage() {
@@ -54,6 +56,7 @@ export default function DashboardPage() {
           recs,
           budgets,
           recurringPayments,
+          monthlyIncome,
         ] = await Promise.all([
           getTopCategories(),
           getMonthlyTrends(6),
@@ -61,6 +64,7 @@ export default function DashboardPage() {
           getRecommendations(),
           getBudgetProgress(),
           getRecurringPayments(),
+          getMonthlyIncome(),
         ]);
 
         setData({
@@ -70,6 +74,7 @@ export default function DashboardPage() {
           recommendations: recs,
           budgetProgress: budgets,
           recurringPayments,
+          monthlyIncome,
         });
       } catch (err) {
         setError(
@@ -161,6 +166,10 @@ export default function DashboardPage() {
 
         <div className="mb-8">
           <RecurringPaymentsCard payments={data.recurringPayments} />
+        </div>
+
+        <div className="mb-8">
+          <MonthlyIncomeCard initialIncome={data.monthlyIncome} />
         </div>
 
         {/* Budget Progress */}

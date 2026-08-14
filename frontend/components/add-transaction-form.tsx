@@ -12,6 +12,7 @@ export function AddTransactionForm({ onSuccess }: { onSuccess: () => void }) {
     description: '',
     merchant: '',
     amount: '',
+    type: 'expense' as 'income' | 'expense' | 'transfer',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,6 +45,7 @@ export function AddTransactionForm({ onSuccess }: { onSuccess: () => void }) {
         description: formData.description,
         merchant: formData.merchant || undefined,
         amount,
+        type: formData.type,
       });
 
       // Reset form
@@ -52,6 +54,7 @@ export function AddTransactionForm({ onSuccess }: { onSuccess: () => void }) {
         description: '',
         merchant: '',
         amount: '',
+        type: 'expense',
       });
 
       onSuccess();
@@ -88,6 +91,26 @@ export function AddTransactionForm({ onSuccess }: { onSuccess: () => void }) {
                 onChange={handleChange}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="type" className="text-sm font-medium">
+                Type
+              </label>
+              <select
+                id="type"
+                name="type"
+                value={formData.type}
+                onChange={(event) => setFormData((previous) => ({
+                  ...previous,
+                  type: event.target.value as 'income' | 'expense' | 'transfer',
+                }))}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+                <option value="transfer">Transfer</option>
+              </select>
             </div>
 
             <div className="space-y-2">
