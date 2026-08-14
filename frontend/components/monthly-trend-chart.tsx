@@ -18,7 +18,7 @@ interface MonthlyTrend {
   count: number;
 }
 
-export function MonthlytrendChart({ trends }: { trends: MonthlyTrend[] }) {
+export function MonthlyTrendChart({ trends }: { trends: MonthlyTrend[] }) {
   if (trends.length === 0) {
     return (
       <Card>
