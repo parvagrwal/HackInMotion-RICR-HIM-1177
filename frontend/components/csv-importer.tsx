@@ -6,9 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { importTransactionsCSV } from '@/app/transactions/actions';
 
-interface CSVRow {
-  [key: string]: any;
-}
+type CSVRow = Record<string, string | undefined>;
 
 export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -43,16 +41,18 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
     setLoading(true);
 
     Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
       complete: async (results) => {
         try {
           const rows = results.data as CSVRow[];
-          if (rows.length === 0) {
+          const headers = results.meta.fields ?? [];
+
+          if (headers.length === 0) {
             throw new Error('CSV file is empty');
           }
 
-          // Get headers
-          const headers = rows[0];
-          const dataRows = rows.slice(1).filter((row) =>
+          const dataRows = rows.filter((row) =>
             Object.values(row).some((val) => val !== null && val !== '')
           );
 
@@ -62,8 +62,8 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
 
           // Find column mappings (case-insensitive)
           const findColumn = (keywords: string[]) =>
-            Object.keys(headers).find((key) =>
-              keywords.some((kw) => key.toLowerCase().includes(kw.toLowerCase()))
+            headers.find((header) =>
+              keywords.some((kw) => header.toLowerCase().includes(kw.toLowerCase()))
             );
 
           const dateCol = findColumn(['date', 'txn date', 'transaction date', 'posted date']);
@@ -74,7 +74,7 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
           if (!dateCol || !descCol || !amountCol) {
             throw new Error(
               'CSV must have Date, Description, and Amount columns. Found columns: ' +
-              Object.keys(headers).join(', ')
+              headers.join(', ')
             );
           }
 
