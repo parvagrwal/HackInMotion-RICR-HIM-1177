@@ -29,8 +29,14 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 py-3">
         {/* Desktop view */}
         <div className="hidden md:flex justify-between items-center">
-          <Link href="/dashboard" className="text-2xl font-bold text-primary hover:opacity-80">
-            💰 Expense Analyzer
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 text-[#10172d] hover:opacity-80"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#10172d] text-lg font-bold text-white">
+              F
+            </span>
+            <span className="text-2xl font-semibold">FinSight</span>
           </Link>
           <div className="flex gap-1 items-center">
             <Link href="/dashboard">
@@ -61,14 +67,20 @@ export function Navigation() {
 
         {/* Mobile view */}
         <div className="md:hidden flex justify-between items-center">
-          <Link href="/dashboard" className="text-xl font-bold text-primary">
-            💰 Analyzer
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 text-[#10172d]"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#10172d] text-sm font-bold text-white">
+              F
+            </span>
+            <span className="text-xl font-semibold">FinSight</span>
           </Link>
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="p-2 hover:bg-muted rounded"
           >
-            {mobileOpen ? '✕' : '☰'}
+            {mobileOpen ? '×' : '☰'}
           </button>
         </div>
 
