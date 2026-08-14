@@ -13,6 +13,7 @@ interface Transaction {
   description: string;
   merchant?: string;
   amount: number;
+  type: 'income' | 'expense' | 'transfer';
   category: string;
   is_recurring: boolean;
   source: string;
@@ -56,7 +57,7 @@ export function TransactionsList({ refresh }: { refresh: boolean }) {
     }
   };
 
-  const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+  const totalAmount = transactions.reduce((sum, tx) => sum + (tx.type === 'expense' ? -tx.amount : tx.amount), 0);
 
   return (
     <Card>
@@ -138,12 +139,13 @@ export function TransactionsList({ refresh }: { refresh: boolean }) {
                       <p className="font-medium text-sm">{tx.description}</p>
                       <p className="text-xs text-muted-foreground">{tx.date}</p>
                     </div>
-                    <p className="font-bold text-sm">${tx.amount.toFixed(2)}</p>
+                    <p className="font-bold text-sm">{tx.type === 'expense' ? '-' : '+'}${tx.amount.toFixed(2)}</p>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="inline-block px-2 py-1 bg-secondary/20 text-secondary-foreground rounded text-xs font-medium">
                       {tx.category}
                     </span>
+                    <span className="text-xs capitalize text-muted-foreground">{tx.type}</span>
                     <Button
                       variant="ghost"
                       size="sm"

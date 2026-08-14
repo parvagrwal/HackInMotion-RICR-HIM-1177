@@ -87,6 +87,7 @@ export async function getRecurringPayments(): Promise<RecurringPayment[]> {
       .from('transactions')
       .select('id, date, amount, merchant, description')
       .eq('user_id', session.user.id)
+      .eq('type', 'expense')
       .gte('date', startDate.toISOString().slice(0, 10))
       .gt('amount', 0)
       .order('date', { ascending: true });
@@ -177,7 +178,8 @@ export async function getTopCategories(
     let query = supabase
       .from('transactions')
       .select('category, amount')
-      .eq('user_id', session.user.id);
+      .eq('user_id', session.user.id)
+      .eq('type', 'expense');
 
     if (monthFilter) {
       const startDate = `${monthFilter}-01`;
@@ -245,6 +247,7 @@ export async function getMonthlyTrends(
       .from('transactions')
       .select('date, amount')
       .eq('user_id', session.user.id)
+      .eq('type', 'expense')
       .gte('date', startDateStr);
 
     if (error) throw error;
@@ -306,6 +309,7 @@ export async function getSpikes(
       .from('transactions')
       .select('category, amount, date')
       .eq('user_id', session.user.id)
+      .eq('type', 'expense')
       .gte('date', startDateStr)
       .lt('date', currentMonth + '-01');
 
@@ -316,6 +320,7 @@ export async function getSpikes(
       .from('transactions')
       .select('category, amount, date')
       .eq('user_id', session.user.id)
+      .eq('type', 'expense')
       .gte('date', currentMonth + '-01')
       .lt('date', currentMonthEndStr);
 
@@ -412,6 +417,7 @@ export async function getFinancialHealthScore(): Promise<FinancialHealthScore> {
       .from('transactions')
       .select('amount')
       .eq('user_id', session.user.id)
+      .eq('type', 'expense')
       .gte('date', currentMonth + '-01')
       .lt('date', currentMonthEndStr);
 
@@ -419,8 +425,22 @@ export async function getFinancialHealthScore(): Promise<FinancialHealthScore> {
 
     const totalSpending = (currentTx || []).reduce((sum, tx) => sum + tx.amount, 0);
 
+    const { data: incomeTx, error: incomeError } = await supabase
+      .from('transactions')
+      .select('amount')
+      .eq('user_id', session.user.id)
+      .eq('type', 'income')
+      .gte('date', currentMonth + '-01')
+      .lt('date', currentMonthEndStr);
+    if (incomeError) throw incomeError;
+
+    const importedIncome = (incomeTx || []).reduce((sum, tx) => sum + tx.amount, 0);
+    const effectiveIncome = monthlyIncome > 0 ? monthlyIncome : importedIncome;
+
     // Calculate savings rate (0-50 points)
-    const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - totalSpending) / monthlyIncome) * 100 : 0;
+    const savingsRate = effectiveIncome > 0
+      ? ((effectiveIncome - totalSpending) / effectiveIncome) * 100
+      : 0;
     let savingsPoints = 0;
     if (savingsRate >= 20) {
       savingsPoints = 50;

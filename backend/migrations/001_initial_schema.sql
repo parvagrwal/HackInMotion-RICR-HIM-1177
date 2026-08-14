@@ -16,6 +16,7 @@ CREATE TABLE public.transactions (
   description TEXT NOT NULL,
   merchant TEXT,
   amount NUMERIC NOT NULL,
+  type TEXT NOT NULL DEFAULT 'expense' CHECK (type IN ('income', 'expense', 'transfer')),
   category TEXT NOT NULL DEFAULT 'Uncategorized',
   is_recurring BOOLEAN DEFAULT FALSE,
   source TEXT DEFAULT 'manual',
