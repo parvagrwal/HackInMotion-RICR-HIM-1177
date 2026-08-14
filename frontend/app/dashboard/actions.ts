@@ -4,25 +4,30 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { getTopCategories } from '@/lib/analysis';
+import { ActionError, reportActionError } from '@/lib/action-utils';
 
 export async function getMonthlyIncome() {
-  const supabase = createServerComponentClient({ cookies });
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user?.id) throw new Error('Unauthorized');
+  try {
+    const supabase = createServerComponentClient({ cookies });
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) throw new Error('Unauthorized');
 
   const { data, error } = await supabase
     .from('profiles')
     .select('monthly_income')
     .eq('id', session.user.id)
     .maybeSingle();
-  if (error) throw error;
-  return Number(data?.monthly_income || 0);
+    if (error) throw error;
+    return Number(data?.monthly_income || 0);
+  } catch (error) { reportActionError('Get monthly income', error); }
 }
 
 export async function updateMonthlyIncome(monthlyIncome: number) {
-  if (!Number.isFinite(monthlyIncome) || monthlyIncome < 0) {
-    throw new Error('Monthly income must be zero or a positive number');
-  }
+  try {
+    if (!Number.isFinite(monthlyIncome) || monthlyIncome < 0 || monthlyIncome > 10_000_000) {
+      throw new ActionError('Monthly income must be between 0 and 10,000,000.', 'VALIDATION_ERROR');
+    }
+    monthlyIncome = Math.round(monthlyIncome * 100) / 100;
 
   const supabase = createServerComponentClient({ cookies });
   const { data: { session } } = await supabase.auth.getSession();
@@ -31,9 +36,10 @@ export async function updateMonthlyIncome(monthlyIncome: number) {
   const { error } = await supabase
     .from('profiles')
     .upsert({ id: session.user.id, monthly_income: monthlyIncome }, { onConflict: 'id' });
-  if (error) throw error;
+    if (error) throw error;
 
-  revalidatePath('/dashboard');
+    revalidatePath('/dashboard');
+  } catch (error) { reportActionError('Update monthly income', error); }
 }
 
 export async function getBudgetProgress() {
@@ -75,7 +81,6 @@ export async function getBudgetProgress() {
       target: budget.target_amount,
     }));
   } catch (error) {
-    console.error('Get budget progress error:', error);
-    return [];
+    reportActionError('Get budget progress', error);
   }
 }

@@ -9,16 +9,20 @@ import { useState } from 'react';
 export function Navigation() {
   const [isLoading, setIsLoading] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
   const supabase = createClientComponentClient();
   const router = useRouter();
 
   const handleLogout = async () => {
     setIsLoading(true);
+    setLogoutError('');
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
+      setLogoutError('Unable to log out. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -27,6 +31,11 @@ export function Navigation() {
   return (
     <nav className="border-b border-border bg-card shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 py-3">
+        {logoutError && (
+          <p role="alert" className="mb-3 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
+            {logoutError}
+          </p>
+        )}
         {/* Desktop view */}
         <div className="hidden md:flex justify-between items-center">
           <Link

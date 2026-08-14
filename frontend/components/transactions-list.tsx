@@ -23,6 +23,7 @@ interface Transaction {
 export function TransactionsList({ refresh }: { refresh: boolean }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [category, setCategory] = useState('All');
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -48,12 +49,16 @@ export function TransactionsList({ refresh }: { refresh: boolean }) {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this transaction?')) return;
+    setError('');
+    setDeletingId(id);
 
     try {
       await deleteTransaction(id);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete transaction');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -77,6 +82,7 @@ export function TransactionsList({ refresh }: { refresh: boolean }) {
             <label className="text-sm font-medium mb-1 block">Category</label>
             <select
               value={category}
+              disabled={loading || deletingId !== null}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
             >
@@ -94,6 +100,7 @@ export function TransactionsList({ refresh }: { refresh: boolean }) {
             <Input
               type="month"
               value={month}
+              disabled={loading || deletingId !== null}
               onChange={(e) => setMonth(e.target.value)}
             />
           </div>
@@ -151,8 +158,9 @@ export function TransactionsList({ refresh }: { refresh: boolean }) {
                       size="sm"
                       onClick={() => handleDelete(tx.id)}
                       className="text-destructive hover:text-destructive text-xs h-8"
+                      disabled={deletingId !== null}
                     >
-                      Delete
+                      {deletingId === tx.id ? 'Deleting...' : 'Delete'}
                     </Button>
                   </div>
                 </div>
@@ -190,8 +198,9 @@ export function TransactionsList({ refresh }: { refresh: boolean }) {
                           size="sm"
                           onClick={() => handleDelete(tx.id)}
                           className="text-destructive hover:text-destructive"
+                          disabled={deletingId !== null}
                         >
-                          Delete
+                          {deletingId === tx.id ? 'Deleting...' : 'Delete'}
                         </Button>
                       </td>
                     </tr>
