@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import Papa from 'papaparse';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { importTransactionsCSV } from '@/app/transactions/actions';
 
 type CSVRow = Record<string, string | undefined>;
@@ -11,16 +9,13 @@ type CSVRow = Record<string, string | undefined>;
 export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [preview, setPreview] = useState<any[]>([]);
+  const [successCount, setSuccessCount] = useState<number | null>(null);
 
   const normalizeDate = (dateStr: string): string => {
-    // Try various date formats
     const date = new Date(dateStr);
     if (!isNaN(date.getTime())) {
       return date.toISOString().split('T')[0];
     }
-
-    // Try DD/MM/YYYY
     const parts = dateStr.split('/');
     if (parts.length === 3) {
       const [day, month, year] = parts;
@@ -29,7 +24,6 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
         return d.toISOString().split('T')[0];
       }
     }
-
     throw new Error(`Invalid date format: ${dateStr}`);
   };
 
@@ -38,6 +32,7 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
     if (!file) return;
 
     setError('');
+    setSuccessCount(null);
     setLoading(true);
 
     Papa.parse(file, {
@@ -57,10 +52,9 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
           );
 
           if (dataRows.length === 0) {
-            throw new Error('No data rows found in CSV (only headers)');
+            throw new Error('No data rows found in CSV');
           }
 
-          // Find column mappings (case-insensitive)
           const findColumn = (keywords: string[]) =>
             headers.find((header) =>
               keywords.some((kw) => header.toLowerCase().includes(kw.toLowerCase()))
@@ -74,22 +68,17 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
           const creditCol = findColumn(['credit', 'deposit']);
 
           if (!dateCol || !descCol || (!amountCol && !debitCol && !creditCol)) {
-            throw new Error(
-              'CSV must have Date, Description, and Amount columns. Found columns: ' +
-              headers.join(', ')
-            );
+            throw new Error('CSV must have Date, Description, and Amount columns.');
           }
 
-          // Parse and validate
-          const skippedRows: Array<{ rowNum: number; reason: string }> = [];
           const transactions = dataRows
-            .map((row, idx) => {
+            .map((row) => {
               try {
                 const date = normalizeDate(row[dateCol]?.toString().trim() || '');
                 const description = row[descCol]?.toString().trim() || '';
                 const merchant = merchantCol ? row[merchantCol]?.toString().trim() : undefined;
-                const parseAmount = (value: string | undefined) =>
-                  parseFloat((value || '').replace(/[^0-9.-]/g, ''));
+                const parseAmount = (val: string | undefined) =>
+                  parseFloat((val || '').replace(/[^0-9.-]/g, ''));
                 const debit = debitCol ? parseAmount(row[debitCol]?.toString().trim()) : NaN;
                 const credit = creditCol ? parseAmount(row[creditCol]?.toString().trim()) : NaN;
                 const signedAmount = amountCol
@@ -100,16 +89,7 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
                       ? -debit
                       : NaN;
 
-                if (!date) {
-                  skippedRows.push({ rowNum: idx + 2, reason: 'Invalid date' });
-                  return null;
-                }
-                if (!description) {
-                  skippedRows.push({ rowNum: idx + 2, reason: 'Missing description' });
-                  return null;
-                }
-                if (isNaN(signedAmount) || signedAmount === 0) {
-                  skippedRows.push({ rowNum: idx + 2, reason: 'Invalid amount' });
+                if (!date || !description || isNaN(signedAmount) || signedAmount === 0) {
                   return null;
                 }
 
@@ -118,118 +98,85 @@ export function CSVImporter({ onSuccess }: { onSuccess: () => void }) {
                   description,
                   merchant: merchant || undefined,
                   amount: Math.abs(signedAmount),
-                  type: signedAmount > 0 ? 'income' : 'expense',
+                  type: (signedAmount > 0 ? 'income' : 'expense') as 'income' | 'expense' | 'transfer',
                 };
-              } catch (err) {
-                skippedRows.push({
-                  rowNum: idx + 2,
-                  reason: err instanceof Error ? err.message : 'Unknown error',
-                });
+              } catch {
                 return null;
               }
             })
-            .filter((tx): tx is any => tx !== null);
+            .filter((t): t is NonNullable<typeof t> => t !== null);
 
           if (transactions.length === 0) {
-            throw new Error(
-              `No valid transactions found. Skipped rows: ${skippedRows
-                .slice(0, 5)
-                .map((r) => `${r.rowNum} (${r.reason})`)
-                .join(', ')}${skippedRows.length > 5 ? '...' : ''}`
-            );
+            throw new Error('No valid transaction rows found in CSV file.');
           }
 
-          setPreview(transactions.slice(0, 5));
-
-          // Import
-          const result = await importTransactionsCSV(transactions);
-          
-          let message = `✅ Successfully imported ${result.imported} transactions.`;
-          if (result.duplicates > 0) {
-            message += ` Skipped ${result.duplicates} duplicates.`;
-          }
-          if (skippedRows.length > 0) {
-            message += ` (${skippedRows.length} rows had errors and were skipped)`;
-          }
-
-          setError(message);
-
-          // Clear error message after success display
-          setTimeout(() => {
-            setError('');
-            setPreview([]);
-            onSuccess();
-          }, 3000);
+          const imported = await importTransactionsCSV(transactions);
+          setSuccessCount(imported.imported);
+          onSuccess();
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to parse CSV');
         } finally {
           setLoading(false);
-          // Reset file input
-          if (e.target) {
-            e.target.value = '';
-          }
         }
       },
       error: (err) => {
-        setError(`CSV parsing error: ${err.message}`);
+        setError(`CSV error: ${err.message}`);
         setLoading(false);
       },
     });
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Import from CSV</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-sm text-muted-foreground space-y-2">
-          <p>📋 CSV Requirements:</p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>Must have: Date, Description, Amount</li>
-            <li>Optional: Merchant/Vendor column</li>
-            <li>Accepted date formats: YYYY-MM-DD, DD/MM/YYYY, ISO 8601</li>
-          </ul>
+    <div className="rounded-3xl border border-slate-100 bg-white p-7 shadow-sm flex flex-col justify-between h-full">
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <div className="text-xs font-bold tracking-widest text-[#0d9488] uppercase">
+            Bulk Import
+          </div>
+          <span className="text-base">📂</span>
         </div>
 
+        <h3 className="text-2xl font-serif font-bold text-[#10172d] mb-2">
+          CSV Importer
+        </h3>
+        <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+          Upload bank statements or CSV files. Automatically categorized using smart keyword matching.
+        </p>
+
         {error && (
-          <div
-            className={`p-3 rounded-md text-sm ${
-              error.toLowerCase().includes('success')
-                ? 'bg-green-50 text-green-900'
-                : 'bg-destructive/10 text-destructive'
-            }`}
-          >
+          <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-xl border border-red-100 mb-4">
             {error}
           </div>
         )}
 
-        <div className="flex items-center gap-4">
+        {successCount !== null && (
+          <div className="p-3 bg-teal-50 text-teal-700 text-xs font-semibold rounded-xl border border-teal-100 mb-4">
+            🎉 Successfully imported {successCount} transactions!
+          </div>
+        )}
+
+        {/* Upload Dropzone */}
+        <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-200 hover:border-[#0d9488] bg-slate-50/50 hover:bg-teal-50/20 rounded-3xl cursor-pointer transition-all group">
+          <span className="text-3xl mb-2 group-hover:scale-110 transition-transform">📄</span>
+          <span className="text-xs font-bold text-[#10172d] group-hover:text-[#0d9488]">
+            {loading ? 'Processing CSV...' : 'Click to choose or drop CSV file'}
+          </span>
+          <span className="text-[10px] text-slate-400 mt-1">Supports Date, Description, Merchant, Amount</span>
           <input
             type="file"
             accept=".csv"
             onChange={handleFileUpload}
             disabled={loading}
-            className="flex-1"
+            className="hidden"
           />
-          <Button disabled={loading} variant="outline">
-            {loading ? 'Processing...' : 'Select CSV'}
-          </Button>
-        </div>
+        </label>
+      </div>
 
-        {preview.length > 0 && (
-          <div className="border rounded-lg p-3 bg-muted/30">
-            <p className="text-sm font-medium mb-2">Preview (first 5 rows):</p>
-            <div className="space-y-1 text-sm">
-              {preview.map((tx, idx) => (
-                <div key={idx} className="text-muted-foreground">
-                  {tx.date} • {tx.description} ({tx.merchant || 'N/A'}) • ${tx.amount.toFixed(2)}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+        <span className="text-[11px] text-slate-400">
+          💡 Expected headers: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600">Date, Description, Amount</code>
+        </span>
+      </div>
+    </div>
   );
 }

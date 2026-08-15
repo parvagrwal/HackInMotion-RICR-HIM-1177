@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-export default function ResetPasswordPage() {
+import { Suspense } from 'react';
+
+function ResetPasswordContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -171,5 +173,13 @@ hasVerifiedLink.current = true;
         )}
       </div>
     </main>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f5f8f8] flex items-center justify-center">Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

@@ -1,7 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
 interface HealthScoreProps {
   score: number;
   savingsRate: number;
@@ -15,71 +13,101 @@ export function HealthScoreGauge({
   budgetAdherence,
   breakdown,
 }: HealthScoreProps) {
-  const getScoreColor = (s: number) => {
-    if (s >= 80) return 'text-green-600 bg-green-50';
-    if (s >= 60) return 'text-amber-600 bg-amber-50';
-    if (s >= 40) return 'text-orange-600 bg-orange-50';
-    return 'text-red-600 bg-red-50';
+  const getHeadline = (s: number) => {
+    if (s >= 80) return { main: 'Your money is looking', highlight: 'healthy.' };
+    if (s >= 60) return { main: 'Your finances are looking', highlight: 'stable.' };
+    if (s >= 40) return { main: 'Your finances need', highlight: 'attention.' };
+    return { main: 'Your financial health is', highlight: 'at risk.' };
   };
 
-  const getScoreLabel = (s: number) => {
-    if (s >= 80) return 'Excellent';
-    if (s >= 60) return 'Good';
-    if (s >= 40) return 'Fair';
-    return 'Needs Work';
+  const getSubtext = (s: number) => {
+    if (s >= 70) return "You're saving consistently and staying within most of your monthly budgets.";
+    if (s >= 50) return 'Your spending is manageable, but there are areas where you can save more.';
+    return 'High spending detected across multiple categories. Review recommendations below.';
   };
+
+  const headline = getHeadline(score);
+  const subtext = getSubtext(score);
+
+  // SVG Gauge calculations
+  const radius = 32;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
 
   return (
-    <Card className={getScoreColor(score)}>
-      <CardHeader>
-        <CardTitle className="text-lg">Financial Health Score</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Score gauge */}
-        <div className="flex items-end justify-center gap-2">
-          <div className="text-5xl font-bold">{score}</div>
-          <div className="text-2xl mb-2">/ 100</div>
+    <div className="rounded-3xl border border-teal-100 bg-gradient-to-br from-[#e6faf5] via-[#f0fdf9] to-[#f8fafc] p-7 shadow-sm flex flex-col justify-between h-full min-h-[300px]">
+      <div>
+        <div className="text-xs font-bold tracking-widest text-[#0d9488] uppercase mb-4">
+          Financial Health
         </div>
 
-        <div className="text-center">
-          <p className="text-lg font-semibold">{getScoreLabel(score)}</p>
-        </div>
+        <h2 className="text-3xl font-serif font-semibold text-[#10172d] leading-tight">
+          {headline.main}{' '}
+          <span className="text-[#0d9488]">{headline.highlight}</span>
+        </h2>
 
-        {/* Progress bar */}
-        <div className="w-full bg-white/30 rounded-full h-2">
-          <div
-            className="h-2 rounded-full transition-all"
-            style={{
-              width: `${score}%`,
-              backgroundColor:
-                score >= 80
-                  ? '#16a34a'
-                  : score >= 60
-                    ? '#d97706'
-                    : score >= 40
-                      ? '#ea580c'
-                      : '#dc2626',
-            }}
-          />
-        </div>
-
-        {/* Metrics */}
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <p className="text-xs opacity-75">Savings Rate</p>
-            <p className="font-semibold">{savingsRate.toFixed(1)}%</p>
-          </div>
-          <div>
-            <p className="text-xs opacity-75">Budget Adherence</p>
-            <p className="font-semibold">{budgetAdherence.toFixed(0)}%</p>
-          </div>
-        </div>
-
-        {/* Breakdown */}
-        <p className="text-xs opacity-75 pt-2 border-t border-current/20">
-          {breakdown}
+        <p className="mt-3 text-sm text-slate-600 leading-relaxed max-w-md">
+          {subtext}
         </p>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-5">
+        <div className="flex items-center gap-5">
+          {/* SVG Circular Progress Gauge */}
+          <div className="relative flex items-center justify-center w-20 h-20">
+            <svg className="w-20 h-20 transform -rotate-90">
+              <circle
+                cx="40"
+                cy="40"
+                r={radius}
+                stroke="#e2e8f0"
+                strokeWidth="6"
+                fill="transparent"
+              />
+              <circle
+                cx="40"
+                cy="40"
+                r={radius}
+                stroke="#0d9488"
+                strokeWidth="6"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                fill="transparent"
+                className="transition-all duration-1000 ease-out"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span className="text-xl font-bold text-[#10172d]">{score}</span>
+              <span className="text-[10px] text-slate-400 font-medium">/ 100</span>
+            </div>
+          </div>
+
+          {/* Labels next to gauge */}
+          <div>
+            <div className="text-base font-semibold text-[#0d9488]">Healthy</div>
+            <div className="text-xs text-slate-500 mt-0.5">+6 points this month</div>
+            <button
+              title={breakdown}
+              className="text-xs font-semibold text-[#10172d] underline mt-1 block hover:text-[#0d9488] transition-colors"
+            >
+              View score breakdown
+            </button>
+          </div>
+        </div>
+
+        {/* Subtle metrics summary */}
+        <div className="flex items-center gap-4 text-xs text-slate-500 border-l border-teal-200/50 pl-4">
+          <div>
+            <span className="block text-[10px] uppercase font-bold text-slate-400">Savings</span>
+            <span className="font-semibold text-slate-700">{savingsRate.toFixed(1)}%</span>
+          </div>
+          <div>
+            <span className="block text-[10px] uppercase font-bold text-slate-400">Budget</span>
+            <span className="font-semibold text-slate-700">{budgetAdherence.toFixed(0)}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
