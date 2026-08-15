@@ -161,7 +161,10 @@ export async function getRecurringPayments(): Promise<RecurringPayment[]> {
 }
 
 /**
- * Get top spending categories for a user
+ * Get top spending categories for a user.
+ * 
+ * @param monthFilter - Optional YYYY-MM string to filter transactions for a specific month.
+ * @returns A promise that resolves to an array of CategorySummary objects.
  */
 export async function getTopCategories(
   monthFilter?: string
@@ -223,7 +226,10 @@ export async function getTopCategories(
 }
 
 /**
- * Get month-over-month spending trends
+ * Get month-over-month spending trends.
+ * 
+ * @param monthsBack - The number of past months to retrieve data for. Default is 6.
+ * @returns A promise that resolves to an array of MonthlyTrend objects.
  */
 export async function getMonthlyTrends(
   monthsBack: number = 6
@@ -280,6 +286,9 @@ export async function getMonthlyTrends(
 
 /**
  * Detect spending spikes (>30% above historical average)
+ * 
+ * @param currentMonth - The current month in YYYY-MM format to check for spikes against historical averages.
+ * @returns A promise that resolves to an array of SpikeAlert objects detailing spending spikes.
  */
 export async function getSpikes(
   currentMonth: string
