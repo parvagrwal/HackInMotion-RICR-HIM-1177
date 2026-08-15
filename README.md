@@ -8,6 +8,8 @@
 └── presentation.pptx
 ```
 Login Link - https://hack-in-motion-ricr-him-1177.vercel.app
+Email-parvagarwal143@gmail.com
+Password- Parv23%
 
 ## Prerequisites
 
