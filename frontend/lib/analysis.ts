@@ -563,3 +563,83 @@ export async function getRecommendations(): Promise<string[]> {
     reportActionError('Get recommendations', error);
   }
 }
+
+export interface NotificationItem {
+  id: string;
+  type: 'budget' | 'spike' | 'recurring' | 'health';
+  title: string;
+  message: string;
+  time: string;
+  severity: 'danger' | 'warning' | 'info' | 'success';
+}
+
+/**
+ * Generate notifications dynamically based on current user financial analysis
+ */
+export async function getNotifications(): Promise<NotificationItem[]> {
+  try {
+    const notifications: NotificationItem[] = [];
+    const currentMonth = new Date().toISOString().slice(0, 7);
+
+    // 1. Check Spikes
+    const spikes = await getSpikes(currentMonth);
+    if (spikes && spikes.length > 0) {
+      spikes.forEach((spike, idx) => {
+        notifications.push({
+          id: `spike-${idx}`,
+          type: 'spike',
+          title: `Spending Spike: ${spike.category}`,
+          message: `Spending is ${spike.percentageAbove.toFixed(0)}% above your average (₹${spike.currentSpend.toLocaleString('en-IN')}).`,
+          time: 'Today',
+          severity: 'danger',
+        });
+      });
+    }
+
+    // 2. Check Subscriptions
+    const recurring = await getRecurringPayments();
+    if (recurring && recurring.length > 0) {
+      recurring.slice(0, 2).forEach((item, idx) => {
+        notifications.push({
+          id: `recurring-${idx}`,
+          type: 'recurring',
+          title: `Upcoming Payment: ${item.merchant}`,
+          message: `₹${item.monthlyCost.toLocaleString('en-IN')} expected around ${item.nextExpectedDate}.`,
+          time: 'Upcoming',
+          severity: 'warning',
+        });
+      });
+    }
+
+    // 3. Check Health Score
+    const score = await getFinancialHealthScore();
+    if (score) {
+      notifications.push({
+        id: 'health-1',
+        type: 'health',
+        title: `Financial Health Score: ${score.score}/100`,
+        message: score.score >= 70 ? 'Your savings rate and budget adherence are looking strong!' : 'Consider reducing discretionary spending to boost score.',
+        time: 'This month',
+        severity: score.score >= 70 ? 'success' : 'warning',
+      });
+    }
+
+    // Default sample fallback if no notifications generated
+    if (notifications.length === 0) {
+      notifications.push({
+        id: 'default-1',
+        type: 'health',
+        title: 'Welcome to FinSight',
+        message: 'Add transactions or import CSV data to receive automated smart notifications.',
+        time: 'Just now',
+        severity: 'info',
+      });
+    }
+
+    return notifications;
+  } catch (error) {
+    reportActionError('Get notifications', error);
+    return [];
+  }
+}
+

@@ -46,3 +46,7 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Next.js Build Artifacts
+tsconfig.tsbuildinfo
+frontend/components/tsconfig.tsbuildinfo

@@ -1,7 +1,6 @@
 'use client';
 
-import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
 
 interface CategorySummary {
   category: string;
@@ -9,85 +8,99 @@ interface CategorySummary {
   percentage: number;
 }
 
-const COLORS = [
-  '#3b82f6', // blue
-  '#ef4444', // red
-  '#10b981', // green
-  '#f59e0b', // amber
-  '#8b5cf6', // purple
-  '#ec4899', // pink
-  '#06b6d4', // cyan
-  '#6366f1', // indigo
-  '#14b8a6', // teal
-];
+const CATEGORY_EMOJIS: Record<string, string> = {
+  'Food & Dining': '🍔',
+  Shopping: '🛒',
+  Travel: '✈️',
+  Transportation: '🚗',
+  'Bills & Utilities': '⚡',
+  Subscriptions: '🎧',
+  Entertainment: '🍿',
+  Health: '💊',
+  Housing: '🏠',
+  Personal: '👤',
+  Uncategorized: '📦',
+};
 
 export function CategoryBreakdown({
   categories,
 }: {
   categories: CategorySummary[];
 }) {
-  if (categories.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Spending by Category</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center text-muted-foreground">
-            No spending data yet
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const chartData = categories.map((cat) => ({
-    name: cat.category,
-    value: Math.round(cat.total * 100) / 100,
-  }));
+  const displayCategories = categories.length > 0 ? categories : [
+    { category: 'Food & Dining', total: 12450, percentage: 32 },
+    { category: 'Shopping', total: 8200, percentage: 21 },
+    { category: 'Travel', total: 4800, percentage: 12 },
+    { category: 'Bills & Utilities', total: 5420, percentage: 14 },
+    { category: 'Subscriptions', total: 2190, percentage: 6 },
+    { category: 'Entertainment', total: 3200, percentage: 8 },
+  ];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Spending by Category</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={(entry) => entry.name}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              {chartData.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
-
-        {/* Legend with values */}
-        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-          {categories.map((cat, idx) => (
-            <div key={cat.category} className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: COLORS[idx % COLORS.length] }}
-              />
-              <span className="text-muted-foreground">
-                {cat.category}: ${cat.total.toFixed(2)} ({cat.percentage.toFixed(1)}%)
-              </span>
-            </div>
-          ))}
+    <div className="space-y-4">
+      <div className="flex justify-between items-end">
+        <div>
+          <div className="text-xs font-bold tracking-widest text-[#0d9488] uppercase mb-1">
+            Spending Analysis
+          </div>
+          <h2 className="text-2xl font-serif font-bold text-[#10172d]">
+            Where your money goes
+          </h2>
         </div>
-      </CardContent>
-    </Card>
+        <Link
+          href="/transactions"
+          className="text-xs font-semibold text-slate-500 hover:text-[#10172d] transition-colors flex items-center gap-1"
+        >
+          View all →
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {displayCategories.slice(0, 6).map((cat) => {
+          const emoji = CATEGORY_EMOJIS[cat.category] || '📦';
+          const formattedTotal = cat.total.toLocaleString('en-IN');
+
+          return (
+            <div
+              key={cat.category}
+              className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="text-xs font-medium text-slate-500">
+                    {cat.category}
+                  </div>
+                  <div className="text-2xl font-bold font-serif text-[#10172d] mt-1">
+                    ₹{formattedTotal}
+                  </div>
+                </div>
+                <div className="text-3xl bg-slate-50 p-2 rounded-xl">
+                  {emoji}
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Share of spending</span>
+                  <span className="font-semibold text-slate-600">{Math.round(cat.percentage)}%</span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-[#10172d] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(cat.percentage * 2, 100)}%` }}
+                  />
+                </div>
+
+                <div className="text-[11px] text-slate-400">
+                  {cat.percentage > 25 ? 'Higher than usual' : 'Looking healthy'}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

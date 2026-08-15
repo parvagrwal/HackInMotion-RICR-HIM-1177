@@ -15,8 +15,8 @@ export async function middleware(request: NextRequest) {
   });
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const publicRoutes = [
     '/',
@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  if (!publicRoutes.includes(pathname) && !session) {
+  if (!publicRoutes.includes(pathname) && !user) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
     (pathname === '/login' ||
       pathname === '/signup' ||
       pathname === '/forgot-password') &&
-    session
+    user
   ) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }

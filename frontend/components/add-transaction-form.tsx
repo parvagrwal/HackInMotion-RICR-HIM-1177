@@ -1,9 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { addTransaction } from '@/app/transactions/actions';
 
 export function AddTransactionForm({ onSuccess }: { onSuccess: () => void }) {
@@ -17,7 +14,7 @@ export function AddTransactionForm({ onSuccess }: { onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -66,104 +63,103 @@ export function AddTransactionForm({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Add Transaction</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div className="rounded-3xl border border-slate-100 bg-white p-7 shadow-sm flex flex-col justify-between h-full">
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <div className="text-xs font-bold tracking-widest text-[#0d9488] uppercase">
+            Quick Entry
+          </div>
+          <span className="text-base">📝</span>
+        </div>
+
+        <h3 className="text-2xl font-serif font-bold text-[#10172d] mb-6">
+          Add Transaction
+        </h3>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
+            <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-xl border border-red-100">
               {error}
             </div>
           )}
 
+
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="date" className="text-sm font-medium">
+            <div className="space-y-1">
+              <label htmlFor="date" className="text-xs font-bold text-[#10172d]">
                 Date
               </label>
-              <Input
+              <input
                 id="date"
                 type="date"
                 name="date"
                 value={formData.date}
                 onChange={handleChange}
                 required
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-[#10172d] outline-none focus:ring-2 focus:ring-teal-500/20"
               />
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="type" className="text-sm font-medium">
-                Type
+            <div className="space-y-1">
+              <label htmlFor="amount" className="text-xs font-bold text-[#10172d]">
+                Amount (₹)
               </label>
-              <select
-                id="type"
-                name="type"
-                value={formData.type}
-                onChange={(event) => setFormData((previous) => ({
-                  ...previous,
-                  type: event.target.value as 'income' | 'expense' | 'transfer',
-                }))}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-              >
-                <option value="expense">Expense</option>
-                <option value="income">Income</option>
-                <option value="transfer">Transfer</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="amount" className="text-sm font-medium">
-                Amount
-              </label>
-              <Input
+              <input
                 id="amount"
                 type="number"
+                step="0.01"
+                min="0"
                 name="amount"
-                placeholder="0.00"
                 value={formData.amount}
                 onChange={handleChange}
-                step="0.01"
+                placeholder="0.00"
                 required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="description" className="text-sm font-medium">
-                Description *
-              </label>
-              <Input
-                id="description"
-                type="text"
-                name="description"
-                placeholder="e.g., Grocery shopping"
-                value={formData.description}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="merchant" className="text-sm font-medium">
-                Merchant
-              </label>
-              <Input
-                id="merchant"
-                type="text"
-                name="merchant"
-                placeholder="e.g., Walmart"
-                value={formData.merchant}
-                onChange={handleChange}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-[#10172d] outline-none focus:ring-2 focus:ring-teal-500/20"
               />
             </div>
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? 'Adding...' : 'Add Transaction'}
-          </Button>
+          <div className="space-y-1">
+            <label htmlFor="description" className="text-xs font-bold text-[#10172d]">
+              Description
+            </label>
+            <input
+              id="description"
+              type="text"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="e.g. Dinner at Swiggy, Groceries"
+              required
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-[#10172d] outline-none focus:ring-2 focus:ring-teal-500/20"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="merchant" className="text-xs font-bold text-[#10172d]">
+              Merchant / Store (Optional)
+            </label>
+            <input
+              id="merchant"
+              type="text"
+              name="merchant"
+              value={formData.merchant}
+              onChange={handleChange}
+              placeholder="e.g. Swiggy, Amazon, Netflix"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-[#10172d] outline-none focus:ring-2 focus:ring-teal-500/20"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 rounded-full bg-[#10172d] text-white text-xs font-bold hover:bg-[#18213d] transition-colors disabled:opacity-50 shadow-sm mt-2"
+          >
+            {loading ? 'Adding Transaction...' : 'Add Transaction +'}
+          </button>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
