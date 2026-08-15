@@ -34,9 +34,9 @@ export async function addTransaction(formData: {
 
     // Get current user
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) {
       throw new Error('Unauthorized');
     }
 
@@ -47,7 +47,7 @@ export async function addTransaction(formData: {
     const { error } = await supabase
       .from('transactions')
       .insert({
-        user_id: session.user.id,
+        user_id: user.id,
         ...transaction,
         category,
         source: 'manual',
@@ -68,9 +68,9 @@ export async function deleteTransaction(id: string) {
     const supabase = createServerComponentClient({ cookies });
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) {
       throw new Error('Unauthorized');
     }
 
@@ -78,7 +78,7 @@ export async function deleteTransaction(id: string) {
       .from('transactions')
       .delete()
       .eq('id', id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .select('id');
 
     if (error) throw error;
@@ -101,13 +101,13 @@ export async function updateTransaction(id: string, updates: Record<string, unkn
     }
     const supabase = createServerComponentClient({ cookies });
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) {
       throw new Error('Unauthorized');
     }
     const { data: current, error: currentError } = await supabase
-      .from('transactions').select('date, description, merchant, amount, type').eq('id', id).eq('user_id', session.user.id).maybeSingle();
+      .from('transactions').select('date, description, merchant, amount, type').eq('id', id).eq('user_id', user.id).maybeSingle();
     if (currentError) throw currentError;
     if (!current) throw new ActionError('Transaction not found.', 'NOT_FOUND');
     const candidate = { ...current, ...updates };
@@ -123,7 +123,7 @@ export async function updateTransaction(id: string, updates: Record<string, unkn
       .from('transactions')
       .update(safeUpdates)
       .eq('id', id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .select('id');
 
     if (error) throw error;
@@ -144,16 +144,16 @@ export async function getTransactions(filters?: {
     const supabase = createServerComponentClient({ cookies });
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) {
       throw new Error('Unauthorized');
     }
 
     let query = supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .order('date', { ascending: false });
 
     if (filters?.category && filters.category !== 'All') {
@@ -196,9 +196,9 @@ export async function importTransactionsCSV(
     const supabase = createServerComponentClient({ cookies });
 
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.id) {
       throw new Error('Unauthorized');
     }
 
@@ -210,7 +210,7 @@ export async function importTransactionsCSV(
       try {
         const safe = validateTransaction(tx);
         return [{
-          user_id: session.user.id,
+          user_id: user.id,
           ...safe, merchant: safe.merchant || null,
           category: categorizeTransaction(safe.merchant, safe.description),
           source: 'csv',
@@ -227,7 +227,7 @@ export async function importTransactionsCSV(
     const { data: existingTx, error: existingError } = await supabase
       .from('transactions')
       .select('date, description, amount')
-      .eq('user_id', session.user.id);
+      .eq('user_id', user.id);
     if (existingError) throw existingError;
 
     const existingSet = new Set(

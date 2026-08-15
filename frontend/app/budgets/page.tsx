@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Navigation } from '@/components/navigation';
 import { HealthScoreGauge } from '@/components/health-score-gauge';
 import { CategoryBreakdown } from '@/components/category-breakdown';
-import { MonthlytrendChart } from '@/components/monthly-trend-chart';
+import { MonthlyTrendChart } from '@/components/monthly-trend-chart';
 import { BudgetProgressBars } from '@/components/budget-progress-bars';
 import { RecommendationsWidget } from '@/components/recommendations-widget';
 import { RecurringPaymentsCard } from '@/components/recurring-payments-card';
@@ -167,7 +167,7 @@ export default function DashboardPage() {
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <CategoryBreakdown categories={data.topCategories} />
-          <MonthlytrendChart trends={data.trends} />
+          <MonthlyTrendChart trends={data.trends} />
         </div>
 
         <div className="mb-8">
