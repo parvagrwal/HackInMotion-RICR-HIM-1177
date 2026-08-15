@@ -7,6 +7,7 @@
 ├── architecture-diagram.png
 └── presentation.pptx
 ```
+Login Link - https://hack-in-motion-ricr-him-1177.vercel.app
 
 ## Prerequisites
 
